@@ -24,6 +24,8 @@ export interface ClaimFull {
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const now = () => new Date().toISOString();
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+const DEFAULT_PER_PAGE = 9;
+const MAX_PER_PAGE = 200;
 
 // ---------- in-memory build dari seed ----------
 interface MemUser extends SessionUser { passwordHash: string; }
@@ -155,7 +157,7 @@ export async function listInnovations(query: InnovationQuery = {}) {
     if (query.q) where.OR = [{ title: { contains: query.q, mode: "insensitive" } }, { description: { contains: query.q, mode: "insensitive" } }, { shortDescription: { contains: query.q, mode: "insensitive" } }];
     const orderBy = query.sort === "oldest" ? { createdAt: "asc" as const } : query.sort === "title" ? { title: "asc" as const } : { createdAt: "desc" as const };
     const page = Math.max(1, query.page ?? 1);
-    const perPage = Math.min(24, Math.max(1, query.perPage ?? 9));
+    const perPage = Math.min(MAX_PER_PAGE, Math.max(1, query.perPage ?? DEFAULT_PER_PAGE));
     const [total, rows] = await Promise.all([
       p.innovation.count({ where }), p.innovation.findMany({ where, orderBy, skip: (page - 1) * perPage, take: perPage, include: { category: true, innovator: true, _count: { select: { claims: true } } } }),
     ]);
@@ -172,7 +174,7 @@ export async function listInnovations(query: InnovationQuery = {}) {
   }
   items.sort((a, b) => query.sort === "oldest" ? a.createdAt.localeCompare(b.createdAt) : query.sort === "title" ? a.title.localeCompare(b.title) : b.createdAt.localeCompare(a.createdAt));
   const page = Math.max(1, query.page ?? 1);
-  const perPage = Math.min(24, Math.max(1, query.perPage ?? 9));
+  const perPage = Math.min(MAX_PER_PAGE, Math.max(1, query.perPage ?? DEFAULT_PER_PAGE));
   const total = items.length;
   return { items: items.slice((page - 1) * perPage, page * perPage), total, page, perPage, totalPages: Math.max(1, Math.ceil(total / perPage)) };
 }

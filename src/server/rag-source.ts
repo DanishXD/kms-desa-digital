@@ -65,7 +65,7 @@ const DOCUMENTS: KnowledgeNode[] = [
 
 export async function buildKnowledgeNodes(): Promise<KnowledgeNode[]> {
   const [innovations, villages, innovators, claims] = await Promise.all([
-    listInnovations({ publishedOnly: true, perPage: 100 }),
+    listInnovations({ publishedOnly: true, perPage: 200 }),
     listVillages(),
     listInnovators(),
     listClaims(),
