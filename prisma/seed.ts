@@ -6,6 +6,9 @@ import { ASSESSMENT_QUESTIONS, CATEGORIES, CLAIMS, INNOVATIONS, INNOVATORS, USER
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.assessmentResult.deleteMany().catch(() => null);
+  await prisma.notification.deleteMany().catch(() => null);
+  await prisma.auditLog.deleteMany().catch(() => null);
   await prisma.assessmentQuestion.deleteMany().catch(() => null);
   await prisma.claim.deleteMany().catch(() => null);
   await prisma.innovation.deleteMany().catch(() => null);

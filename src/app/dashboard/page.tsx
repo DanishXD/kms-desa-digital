@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge, EmptyState, SectionTitle, Stat } from "@/components/ui";
 import { auth } from "@/auth";
-import { dashboardStats, listClaims, listInnovations, userNotifications } from "@/server/store";
+import { dashboardStats, listAssessments, listClaims, listInnovations, userNotifications } from "@/server/store";
 import type { SessionUser } from "@/server/store";
 
 export default async function DashboardPage() {
@@ -53,6 +53,7 @@ export default async function DashboardPage() {
 
   // VILLAGE
   const claims = await listClaims({ villageId: user.villageId });
+  const assessments = await listAssessments(user.villageId, 5);
   return (
     <div className="space-y-6">
       <div><h1 className="text-2xl font-extrabold text-brand-900">Dashboard Desa</h1><p className="text-sm text-gray-500">Halo, {user.name} 👋</p></div>
@@ -70,6 +71,19 @@ export default async function DashboardPage() {
               <li key={c.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 ring-1 ring-brand-100">
                 <div><p className="font-bold">{c.innovationTitle}</p><p className="text-xs text-gray-500">{new Date(c.submittedAt).toLocaleDateString("id-ID")}</p></div>
                 <Badge status={c.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section>
+        <SectionTitle title="Riwayat Assessment" href="/assessment" linkLabel="Isi assessment →" />
+        {assessments.length === 0 ? <EmptyState title="Belum ada riwayat assessment." hint="Ukur kesiapan digital desa dalam 7 pertanyaan." action={<Link href="/assessment" className="text-sm font-bold text-brand-600">Mulai assessment →</Link>} /> : (
+          <ul className="space-y-2">
+            {assessments.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 ring-1 ring-brand-100">
+                <div><p className="font-bold">{a.score}/100</p><p className="text-xs text-gray-500">{new Date(a.createdAt).toLocaleDateString("id-ID")}</p></div>
+                <div className="flex shrink-0 items-center gap-2"><Badge status={a.level === "HIGH" ? "APPROVED" : a.level === "MEDIUM" ? "PENDING" : "REJECTED"} /><span className="text-xs font-semibold text-gray-500">{a.level}</span></div>
               </li>
             ))}
           </ul>

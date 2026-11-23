@@ -68,7 +68,7 @@ function buildMemory() {
     submittedAt: now(), reviewedAt: s.status === "PENDING" ? undefined : now(),
   }));
   const questions = ASSESSMENT_QUESTIONS.map((q, i) => ({ id: `q_seed_${i}`, ...q }));
-  return { users, innovators, villages, categories, innovations, claims, questions, notifications: [] as { id: string; userId: string; type: string; title: string; body?: string; read: boolean; createdAt: string }[], audit: [] as { id: string; actorId?: string; action: string; entity: string; entityId?: string; createdAt: string }[] };
+  return { users, innovators, villages, categories, innovations, claims, questions, notifications: [] as { id: string; userId: string; type: string; title: string; body?: string; read: boolean; createdAt: string }[], audit: [] as { id: string; actorId?: string; action: string; entity: string; entityId?: string; createdAt: string }[], assessments: [] as { id: string; villageId?: string; villageName?: string; answers: { questionId: string; value: number }[]; score: number; level: string; recommendations: unknown; createdAt: string }[] };
 }
 type Mem = ReturnType<typeof buildMemory>;
 const mem: Mem = buildMemory();
@@ -285,6 +285,48 @@ export async function listQuestions() {
   const p = await prisma();
   if (p) return (await p.assessmentQuestion.findMany({ orderBy: { order: "asc" } })).map((q) => ({ id: q.id, category: q.category, text: q.text, weight: q.weight, order: q.order }));
   return clone(mem.questions);
+}
+
+// ---------- assessment ----------
+export interface AssessmentSummary {
+  id: string; villageId?: string; villageName?: string; score: number; level: string; createdAt: string;
+}
+export async function saveAssessment(
+  user: SessionUser | null,
+  input: { villageName?: string; answers: { questionId: string; value: number }[]; result: { totalScore: number; level: string; recommendations: unknown } },
+): Promise<{ id: string }> {
+  const p = await prisma();
+  if (p) {
+    const created = await p.assessmentResult.create({
+      data: {
+        villageId: user?.villageId,
+        villageName: input.villageName,
+        answers: input.answers,
+        score: input.result.totalScore,
+        level: input.result.level,
+        recommendations: input.result.recommendations as object,
+      },
+    });
+    return { id: created.id };
+  }
+  const id = uid("as");
+  mem.assessments.unshift({
+    id, villageId: user?.villageId, villageName: input.villageName,
+    answers: clone(input.answers), score: input.result.totalScore, level: input.result.level,
+    recommendations: clone(input.result.recommendations), createdAt: now(),
+  });
+  return { id };
+}
+export async function listAssessments(villageId?: string, limit = 10): Promise<AssessmentSummary[]> {
+  const p = await prisma();
+  if (p) {
+    const rows = await p.assessmentResult.findMany({ where: villageId ? { villageId } : undefined, orderBy: { createdAt: "desc" }, take: limit });
+    return rows.map((r) => ({ id: r.id, villageId: r.villageId ?? undefined, villageName: r.villageName ?? undefined, score: r.score, level: r.level, createdAt: r.createdAt.toISOString() }));
+  }
+  return clone(mem.assessments
+    .filter((a) => !villageId || a.villageId === villageId)
+    .slice(0, limit)
+    .map((a) => ({ id: a.id, villageId: a.villageId, villageName: a.villageName, score: a.score, level: a.level, createdAt: a.createdAt })));
 }
 
 // ---------- claims ----------
