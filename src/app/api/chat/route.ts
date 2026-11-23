@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { buildKnowledgeNodes } from "@/server/rag-source";
 import {
   CHAT_DISCLAIMER,
@@ -14,6 +15,8 @@ interface HistoryItem { from?: string; text?: string }
 
 const MAX_MESSAGE = 500;
 const HISTORY_LIMIT = 6;
+const CHAT_LIMIT = 30;
+const CHAT_WINDOW_MS = 60 * 1000;
 
 function fallback(
   role: ChatRole,
@@ -49,6 +52,13 @@ function toJson(result: RagResult) {
 }
 
 export async function POST(req: Request) {
+  const limit = rateLimit(`chat:${clientIp(req)}`, CHAT_LIMIT, CHAT_WINDOW_MS);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Terlalu banyak permintaan. Coba lagi sebentar." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
   // Role SELALU berasal dari sesi server, tidak pernah dipercaya dari body client.
   const session = await auth().catch(() => null);
   const role = roleFromSession((session?.user as Record<string, unknown> | undefined)?.role as string | undefined);

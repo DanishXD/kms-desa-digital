@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { registerSchema } from "@/lib/validation";
 import { registerUser } from "@/server/store";
 
+const REGISTER_LIMIT = 5;
+const REGISTER_WINDOW_MS = 60 * 60 * 1000;
+
 export async function POST(req: Request) {
+  const limit = rateLimit(`register:${clientIp(req)}`, REGISTER_LIMIT, REGISTER_WINDOW_MS);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Terlalu banyak percobaan pendaftaran. Coba lagi nanti." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
   try {
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
