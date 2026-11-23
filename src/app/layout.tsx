@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Footer, Navbar } from "@/components/layout";
 import { ChatFab } from "@/components/chat-fab";
+import { siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: { default: "KMS Desa Digital Indonesia - Solusi Inovasi Desa", template: "%s | KMS Desa Digital" },
   description: "Knowledge Management System Desa Digital Indonesia. Platform berbagi inovasi, potensi, dan teknologi untuk memajukan desa Nusantara.",
   keywords: ["KMS Desa Digital", "Inovasi Desa", "Smart Village", "Desa Digital Indonesia"],

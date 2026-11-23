@@ -1,7 +1,11 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { verifyCredentials } from "@/server/store";
+
+const LOGIN_LIMIT = 20;
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -10,10 +14,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       name: "Email",
       credentials: { email: { label: "Email", type: "email" }, password: { label: "Kata sandi", type: "password" } },
-      async authorize(creds) {
+      async authorize(creds, request) {
         const email = String(creds?.email ?? "");
         const password = String(creds?.password ?? "");
         if (!email || !password) return null;
+        const ip = request instanceof Request ? clientIp(request) : "unknown";
+        const limit = rateLimit(`login:${ip}:${email.toLowerCase()}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+        if (!limit.ok) return null;
         const user = await verifyCredentials(email, password);
         if (!user) return null;
         return { id: user.id, email: user.email, name: user.name, role: user.role, innovatorId: user.innovatorId, villageId: user.villageId } as unknown as import("next-auth").User;

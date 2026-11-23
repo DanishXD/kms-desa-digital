@@ -3,10 +3,11 @@
 // Semua business-rule (§32) dicek di sini + guard route, bukan di client.
 import bcrypt from "bcryptjs";
 import { ASSESSMENT_QUESTIONS, CATEGORIES, CLAIMS, INNOVATIONS, INNOVATORS, USERS, VILLAGES } from "@/data/seed-data";
+import { claimFilterFor } from "@/lib/access";
 import { canTransitionClaim, canTransitionInnovation } from "@/lib/scoring";
 import { isObjectId, slugify } from "@/lib/utils";
 
-export interface SessionUser { id: string; email: string; name: string; role: "INNOVATOR" | "VILLAGE" | "ADMIN"; innovatorId?: string; villageId?: string; }
+export interface SessionUser { id: string; email: string; name: string; role: "INNOVATOR" | "VILLAGE" | "ADMIN" | "KEMENTERIAN"; innovatorId?: string; villageId?: string; }
 export interface InnovationFull {
   id: string; title: string; slug: string; shortDescription: string; description: string;
   categoryId: string; categoryName: string; categorySlug: string;
@@ -23,6 +24,8 @@ export interface ClaimFull {
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const now = () => new Date().toISOString();
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+const DEFAULT_PER_PAGE = 9;
+const MAX_PER_PAGE = 200;
 
 // ---------- in-memory build dari seed ----------
 interface MemUser extends SessionUser { passwordHash: string; }
@@ -65,14 +68,14 @@ function buildMemory() {
     submittedAt: now(), reviewedAt: s.status === "PENDING" ? undefined : now(),
   }));
   const questions = ASSESSMENT_QUESTIONS.map((q, i) => ({ id: `q_seed_${i}`, ...q }));
-  return { users, innovators, villages, categories, innovations, claims, questions, notifications: [] as { id: string; userId: string; type: string; title: string; body?: string; read: boolean; createdAt: string }[], audit: [] as { id: string; actorId?: string; action: string; entity: string; entityId?: string; createdAt: string }[] };
+  return { users, innovators, villages, categories, innovations, claims, questions, notifications: [] as { id: string; userId: string; type: string; title: string; body?: string; read: boolean; createdAt: string }[], audit: [] as { id: string; actorId?: string; action: string; entity: string; entityId?: string; createdAt: string }[], assessments: [] as { id: string; villageId?: string; villageName?: string; answers: { questionId: string; value: number }[]; score: number; level: string; recommendations: unknown; createdAt: string }[] };
 }
 type Mem = ReturnType<typeof buildMemory>;
 const mem: Mem = buildMemory();
 export const isDbMode = () => !!process.env.DATABASE_URL;
 
 // Prisma lazy (client di-generate via `prisma generate`; aman bila belum ada → fallback memori)
-async function prisma() {
+export async function prisma() {
   if (!isDbMode()) return null;
   try {
     const { PrismaClient } = await import("@prisma/client");
@@ -154,7 +157,7 @@ export async function listInnovations(query: InnovationQuery = {}) {
     if (query.q) where.OR = [{ title: { contains: query.q, mode: "insensitive" } }, { description: { contains: query.q, mode: "insensitive" } }, { shortDescription: { contains: query.q, mode: "insensitive" } }];
     const orderBy = query.sort === "oldest" ? { createdAt: "asc" as const } : query.sort === "title" ? { title: "asc" as const } : { createdAt: "desc" as const };
     const page = Math.max(1, query.page ?? 1);
-    const perPage = Math.min(24, Math.max(1, query.perPage ?? 9));
+    const perPage = Math.min(MAX_PER_PAGE, Math.max(1, query.perPage ?? DEFAULT_PER_PAGE));
     const [total, rows] = await Promise.all([
       p.innovation.count({ where }), p.innovation.findMany({ where, orderBy, skip: (page - 1) * perPage, take: perPage, include: { category: true, innovator: true, _count: { select: { claims: true } } } }),
     ]);
@@ -171,7 +174,7 @@ export async function listInnovations(query: InnovationQuery = {}) {
   }
   items.sort((a, b) => query.sort === "oldest" ? a.createdAt.localeCompare(b.createdAt) : query.sort === "title" ? a.title.localeCompare(b.title) : b.createdAt.localeCompare(a.createdAt));
   const page = Math.max(1, query.page ?? 1);
-  const perPage = Math.min(24, Math.max(1, query.perPage ?? 9));
+  const perPage = Math.min(MAX_PER_PAGE, Math.max(1, query.perPage ?? DEFAULT_PER_PAGE));
   const total = items.length;
   return { items: items.slice((page - 1) * perPage, page * perPage), total, page, perPage, totalPages: Math.max(1, Math.ceil(total / perPage)) };
 }
@@ -284,6 +287,48 @@ export async function listQuestions() {
   return clone(mem.questions);
 }
 
+// ---------- assessment ----------
+export interface AssessmentSummary {
+  id: string; villageId?: string; villageName?: string; score: number; level: string; createdAt: string;
+}
+export async function saveAssessment(
+  user: SessionUser | null,
+  input: { villageName?: string; answers: { questionId: string; value: number }[]; result: { totalScore: number; level: string; recommendations: unknown } },
+): Promise<{ id: string }> {
+  const p = await prisma();
+  if (p) {
+    const created = await p.assessmentResult.create({
+      data: {
+        villageId: user?.villageId,
+        villageName: input.villageName,
+        answers: input.answers,
+        score: input.result.totalScore,
+        level: input.result.level,
+        recommendations: input.result.recommendations as object,
+      },
+    });
+    return { id: created.id };
+  }
+  const id = uid("as");
+  mem.assessments.unshift({
+    id, villageId: user?.villageId, villageName: input.villageName,
+    answers: clone(input.answers), score: input.result.totalScore, level: input.result.level,
+    recommendations: clone(input.result.recommendations), createdAt: now(),
+  });
+  return { id };
+}
+export async function listAssessments(villageId?: string, limit = 10): Promise<AssessmentSummary[]> {
+  const p = await prisma();
+  if (p) {
+    const rows = await p.assessmentResult.findMany({ where: villageId ? { villageId } : undefined, orderBy: { createdAt: "desc" }, take: limit });
+    return rows.map((r) => ({ id: r.id, villageId: r.villageId ?? undefined, villageName: r.villageName ?? undefined, score: r.score, level: r.level, createdAt: r.createdAt.toISOString() }));
+  }
+  return clone(mem.assessments
+    .filter((a) => !villageId || a.villageId === villageId)
+    .slice(0, limit)
+    .map((a) => ({ id: a.id, villageId: a.villageId, villageName: a.villageName, score: a.score, level: a.level, createdAt: a.createdAt })));
+}
+
 // ---------- claims ----------
 export async function createClaim(user: SessionUser, innovationId: string, message: string) {
   if (user.role !== "VILLAGE" || !user.villageId) throw new Error("Hanya akun DESA yang dapat mengajukan adopsi.");
@@ -305,16 +350,33 @@ export async function createClaim(user: SessionUser, innovationId: string, messa
   admins.forEach((a) => notify(a.id, "claim_submitted", "Pengajuan adopsi baru", `${village.name} → ${innovation.title}`));
   return id;
 }
-export async function listClaims(filter: { villageId?: string; status?: string } = {}) {
+export async function listClaims(filter: { villageId?: string; status?: string; innovatorId?: string } = {}) {
   const p = await prisma();
   if (p) {
-    const rows = await p.claim.findMany({ where: { ...(filter.villageId ? { villageId: filter.villageId } : {}), ...(filter.status ? { status: filter.status as "PENDING" } : {}) }, orderBy: { submittedAt: "desc" }, include: { innovation: true, village: true } });
+    const rows = await p.claim.findMany({
+      where: {
+        ...(filter.villageId ? { villageId: filter.villageId } : {}),
+        ...(filter.status ? { status: filter.status as "PENDING" } : {}),
+        ...(filter.innovatorId ? { innovation: { is: { innovatorId: filter.innovatorId } } } : {}),
+      },
+      orderBy: { submittedAt: "desc" },
+      include: { innovation: true, village: true },
+    });
     return rows.map((c) => ({ id: c.id, innovationId: c.innovationId, innovationTitle: c.innovation.title, villageId: c.villageId, villageName: c.village.name, status: c.status, message: c.message, notes: c.notes ?? undefined, submittedAt: c.submittedAt.toISOString(), reviewedAt: c.reviewedAt?.toISOString() }));
   }
   let items = mem.claims.map(clone);
   if (filter.villageId) items = items.filter((c) => c.villageId === filter.villageId);
   if (filter.status) items = items.filter((c) => c.status === filter.status);
+  const innovatorId = filter.innovatorId;
+  if (innovatorId) items = items.filter((c) => mem.innovations.find((i) => i.id === c.innovationId)?.innovatorId === innovatorId);
   return items;
+}
+/** Batas otorisasi baca klaim: scope selalu dari sesi, bukan dari query client. */
+export async function listClaimsForUser(user: SessionUser, filter: { status?: string; villageId?: string } = {}) {
+  const scope = claimFilterFor(user);
+  if (scope.all) return listClaims({ status: filter.status, villageId: filter.villageId });
+  if (!scope.villageId && !scope.innovatorId) return [];
+  return listClaims({ status: filter.status, villageId: scope.villageId, innovatorId: scope.innovatorId });
 }
 export async function moderateClaim(user: SessionUser, id: string, action: "REVIEWING" | "APPROVED" | "REJECTED", notes?: string) {
   if (user.role !== "ADMIN") throw new Error("Hanya ADMIN yang dapat memoderasi pengajuan.");
@@ -398,6 +460,14 @@ export async function userNotifications(userId: string) {
     return rows.map((n) => ({ id: n.id, type: n.type, title: n.title, body: n.body ?? undefined, read: n.read, createdAt: n.createdAt.toISOString() }));
   }
   return clone(mem.notifications.filter((n) => n.userId === userId).slice(0, 20));
+}
+export async function markNotificationsRead(userId: string) {
+  const p = await prisma();
+  if (p) {
+    await p.notification.updateMany({ where: { userId, read: false }, data: { read: true } }).catch(() => null);
+    return;
+  }
+  mem.notifications.forEach((n) => { if (n.userId === userId) n.read = true; });
 }
 export async function recentActivity(limit = 8) {
   return clone(mem.audit.slice(0, limit));

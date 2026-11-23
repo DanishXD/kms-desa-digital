@@ -6,16 +6,17 @@ import { listQuestions } from "@/server/store";
 type Q = Awaited<ReturnType<typeof listQuestions>>[number];
 const LABELS = ["Belum ada", "Rencana", "Sebagian", "Baik", "Optimal"];
 
-export function AssessmentWizard({ questions }: { questions: Q[] }) {
+export function AssessmentWizard({ questions, canSave }: { questions: Q[]; canSave: boolean }) {
   const [villageName, setVillageName] = useState("");
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [result, setResult] = useState<{ totalScore: number; level: string; interpretation: string; recommendations: { category: string; advice: string }[] } | null>(null);
+  const [result, setResult] = useState<{ totalScore: number; level: string; interpretation: string; recommendations: { category: string; advice: string }[]; saved?: boolean; assessmentId?: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const done = questions.length > 0 && questions.every((q) => answers[q.id] !== undefined);
 
   return (
     <div className="space-y-4">
       <input value={villageName} onChange={(e) => setVillageName(e.target.value)} placeholder="Nama desamu (opsional)" className={inputCls + " max-w-sm"} aria-label="Nama desa" />
+      <p className="text-xs text-gray-500">{canSave ? "Hasil akan tersimpan ke riwayat desa." : "Masuk sebagai akun desa untuk menyimpan riwayat."}</p>
       {questions.map((q, i) => (
         <fieldset key={q.id} className="rounded-2xl bg-white p-4 ring-1 ring-brand-100">
           <legend className="px-1 text-sm font-bold">{i + 1}. {q.text} <span className="ml-1 rounded bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{q.category}</span></legend>
@@ -47,6 +48,7 @@ export function AssessmentWizard({ questions }: { questions: Q[] }) {
           <p className="text-5xl font-extrabold">{result.totalScore}<span className="text-xl">/100</span></p>
           <p className="mt-2"><Badge status={result.level === "HIGH" ? "APPROVED" : result.level === "MEDIUM" ? "PENDING" : "REJECTED"} /> <span className="font-bold">{result.level}</span></p>
           <p className="mt-2 text-sm text-brand-100">{result.interpretation}</p>
+          <p className="mt-2 text-xs text-brand-100">{result.saved ? "Tersimpan ke riwayat desa" : "Masuk sebagai akun desa untuk menyimpan riwayat."}</p>
           {result.recommendations.length > 0 && (
             <ul className="mt-3 space-y-2 text-sm">
               {result.recommendations.map((r) => <li key={r.category} className="rounded-xl bg-white/10 p-3"><b>{r.category}:</b> {r.advice}</li>)}

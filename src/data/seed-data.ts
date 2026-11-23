@@ -16,7 +16,7 @@ export const CATEGORIES = [
   { name: "Social Service", slug: "social-service", description: "Kesehatan, pendidikan, dan layanan sosial desa." },
 ] as const;
 
-export interface SeedUser { email: string; password: string; name: string; role: "INNOVATOR" | "VILLAGE" | "ADMIN"; }
+export interface SeedUser { email: string; password: string; name: string; role: "INNOVATOR" | "VILLAGE" | "ADMIN" | "KEMENTERIAN"; }
 export const USERS: SeedUser[] = [
   { email: "admin@digidesa.id", password: "admin123", name: "Admin KMS", role: "ADMIN" },
   { email: "inovator@tani.id", password: "inovator123", name: "Ahmad Hidayat", role: "INNOVATOR" },
@@ -24,6 +24,7 @@ export const USERS: SeedUser[] = [
   { email: "inovator@irigasi.id", password: "inovator123", name: "Budi Santoso", role: "INNOVATOR" },
   { email: "desa@petir.id", password: "desa123", name: "Perangkat Desa Petir", role: "VILLAGE" },
   { email: "desa@sembalun.id", password: "desa123", name: "Perangkat Desa Sembalun", role: "VILLAGE" },
+  { email: "kementerian@digidesa.id", password: "kementerian123", name: "Analis Kementerian Desa", role: "KEMENTERIAN" },
 ];
 
 export interface SeedInnovator { userEmail: string; name: string; organization: string; bio: string; location: string; website?: string; }

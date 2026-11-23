@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { canListAllInnovations } from "@/lib/access";
 import { innovationSchema } from "@/lib/validation";
 import { createInnovation, getInnovation, listInnovations, updateInnovation } from "@/server/store";
 import type { SessionUser } from "@/server/store";
 
 export async function GET(req: Request) {
+  // Draf dan filter status hanya untuk ADMIN; pengunjung selalu melihat katalog tayang.
+  const session = await auth();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const isAdmin = canListAllInnovations(role);
   const { searchParams } = new URL(req.url);
+  const all = isAdmin && searchParams.get("all") === "1";
   const data = await listInnovations({
     q: searchParams.get("q") ?? undefined,
     category: searchParams.get("category") ?? undefined,
-    status: searchParams.get("status") ?? undefined,
+    status: isAdmin ? searchParams.get("status") ?? undefined : undefined,
     sort: searchParams.get("sort") ?? undefined,
     page: Number(searchParams.get("page") ?? 1),
     perPage: Number(searchParams.get("perPage") ?? 9),
-    publishedOnly: searchParams.get("all") !== "1",
+    publishedOnly: !all,
   });
   return NextResponse.json(data);
 }
