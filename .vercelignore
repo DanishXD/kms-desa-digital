@@ -1,0 +1,22 @@
+# Jangan pernah upload kredensial / file lokal ke Vercel
+.env
+.env.*
+!.env.example
+PASSWORD
+PASSWORD/**
+
+# Build artifacts & dependencies (Vercel yang akan build ulang)
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+
+# Skill/agent lokal & log — tidak diperlukan runtime
+.agents
+.claude
+.dev
+*.log
+.DS_Store
+.git

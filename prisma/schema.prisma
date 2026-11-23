@@ -1,0 +1,173 @@
+// Prisma schema — KMS Desa Digital Clone
+// Provider MongoDB Atlas (reuse arsitektur RAG PPKBP).
+// App juga jalan TANPA DATABASE_URL via fallback seed in-memory (src/server/store.ts).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  INNOVATOR
+  VILLAGE
+  ADMIN
+}
+
+enum InnovationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REVISION_REQUIRED
+  PUBLISHED
+}
+
+enum ClaimStatus {
+  PENDING
+  REVIEWING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model User {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  email        String     @unique
+  passwordHash String?
+  name         String
+  role         Role       @default(INNOVATOR)
+  image        String?
+  createdAt    DateTime   @default(now())
+  innovator    Innovator?
+  villages     Village[]
+  auditLogs    AuditLog[] @relation("ActorLogs")
+  reviewedClaims Claim[]  @relation("ReviewerClaims")
+}
+
+model Innovator {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String      @unique @db.ObjectId
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  organization String?
+  bio          String?
+  photo        String?
+  phone        String?
+  website      String?
+  location     String?
+  innovations  Innovation[]
+}
+
+model Village {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String?  @db.ObjectId
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name             String
+  province         String
+  regency          String
+  district         String
+  description      String?
+  population       Int?
+  potential        String[]
+  infrastructure   String[]
+  digitalReadiness String?
+  image            String?
+  latitude         Float?
+  longitude        Float?
+  claims           Claim[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Category {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  name        String       @unique
+  slug        String       @unique
+  description String?
+  innovations Innovation[]
+}
+
+model Innovation {
+  id               String           @id @default(auto()) @map("_id") @db.ObjectId
+  title            String
+  slug             String           @unique
+  shortDescription String
+  description      String
+  categoryId       String           @db.ObjectId
+  category         Category         @relation(fields: [categoryId], references: [id])
+  problem          String?
+  solution         String?
+  benefits         String?
+  implementation   String?
+  technology       String?
+  requirements     String?
+  estimatedCost    String?
+  impact           String?
+  image            String?
+  status           InnovationStatus @default(DRAFT)
+  innovatorId      String           @db.ObjectId
+  innovator        Innovator        @relation(fields: [innovatorId], references: [id], onDelete: Cascade)
+  claims           Claim[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  publishedAt      DateTime?
+}
+
+model Claim {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  innovationId String     @db.ObjectId
+  innovation  Innovation  @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  villageId   String      @db.ObjectId
+  village     Village     @relation(fields: [villageId], references: [id], onDelete: Cascade)
+  status      ClaimStatus @default(PENDING)
+  message     String
+  notes       String?
+  reviewedById String?    @db.ObjectId
+  reviewedBy  User?       @relation("ReviewerClaims", fields: [reviewedById], references: [id], onDelete: SetNull)
+  submittedAt DateTime    @default(now())
+  reviewedAt  DateTime?
+}
+
+model AssessmentQuestion {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  category String
+  text     String
+  weight   Float  @default(1)
+  order    Int    @default(0)
+}
+
+model AssessmentResult {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  villageId  String?  @db.ObjectId
+  villageName String?
+  answers    Json
+  score      Float
+  level      String
+  recommendations Json?
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  type      String
+  title     String
+  body      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId   String?  @db.ObjectId
+  actor     User?    @relation("ActorLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  detail    String?
+  createdAt DateTime @default(now())
+}

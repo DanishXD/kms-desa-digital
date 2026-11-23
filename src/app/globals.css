@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef8f4;
+  --color-brand-100: #d7ece2;
+  --color-brand-200: #b0d9c6;
+  --color-brand-300: #84bfa6;
+  --color-brand-400: #568a73;
+  --color-brand-500: #347357;
+  --color-brand-600: #2b6049;
+  --color-brand-700: #234d3b;
+  --color-brand-800: #1d3f31;
+  --color-brand-900: #182f26;
+  --color-accent-400: #eab308;
+  --color-accent-500: #ca9a06;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #eef8f4;
+  color: #1f2937;
+  font-family: var(--font-sans);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Tombol buka/tutup chat: aman dari notch/home-indicator di HP & tablet. */
+.chat-fab-toggle {
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
+}
+
+/* Panel chat: tinggi mengikuti viewport (dvh) agar tidak terpotong saat
+   HP/tablet diputar ke landscape atau address bar browser menyusut. */
+.chat-panel {
+  bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  width: min(24rem, calc(100vw - 2.5rem));
+  height: min(30rem, calc(100dvh - 8rem));
+}
+
+/* Layar pendek (HP landscape / tablet landscape kecil): panel jadi
+   hampir penuh tinggi layar, header dirapatkan, chip cepat disembunyikan
+   supaya area percakapan dan input tetap terlihat. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .chat-panel {
+    top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    height: auto;
+    width: min(28rem, calc(100vw - 6rem));
+  }
+  .chat-quick {
+    display: none;
+  }
+  .site-nav {
+    height: 3rem;
+  }
+  .brand-sub,
+  .demo-banner {
+    display: none;
+  }
+  .hero {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}
