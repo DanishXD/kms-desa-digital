@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { claimSchema } from "@/lib/validation";
-import { cancelClaim, createClaim, listClaims, moderateClaim } from "@/server/store";
+import { cancelClaim, createClaim, listClaimsForUser, moderateClaim } from "@/server/store";
 import type { SessionUser } from "@/server/store";
 
 const toUser = (u: unknown) => u as unknown as SessionUser;
@@ -11,8 +11,8 @@ export async function GET(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const user = toUser(session.user);
   const { searchParams } = new URL(req.url);
-  const items = await listClaims({
-    villageId: user.role === "VILLAGE" ? user.villageId : searchParams.get("villageId") ?? undefined,
+  const items = await listClaimsForUser(user, {
+    villageId: searchParams.get("villageId") ?? undefined,
     status: searchParams.get("status") ?? undefined,
   });
   return NextResponse.json({ items });

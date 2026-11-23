@@ -3,6 +3,7 @@
 // Semua business-rule (§32) dicek di sini + guard route, bukan di client.
 import bcrypt from "bcryptjs";
 import { ASSESSMENT_QUESTIONS, CATEGORIES, CLAIMS, INNOVATIONS, INNOVATORS, USERS, VILLAGES } from "@/data/seed-data";
+import { claimFilterFor } from "@/lib/access";
 import { canTransitionClaim, canTransitionInnovation } from "@/lib/scoring";
 import { isObjectId, slugify } from "@/lib/utils";
 
@@ -305,16 +306,33 @@ export async function createClaim(user: SessionUser, innovationId: string, messa
   admins.forEach((a) => notify(a.id, "claim_submitted", "Pengajuan adopsi baru", `${village.name} → ${innovation.title}`));
   return id;
 }
-export async function listClaims(filter: { villageId?: string; status?: string } = {}) {
+export async function listClaims(filter: { villageId?: string; status?: string; innovatorId?: string } = {}) {
   const p = await prisma();
   if (p) {
-    const rows = await p.claim.findMany({ where: { ...(filter.villageId ? { villageId: filter.villageId } : {}), ...(filter.status ? { status: filter.status as "PENDING" } : {}) }, orderBy: { submittedAt: "desc" }, include: { innovation: true, village: true } });
+    const rows = await p.claim.findMany({
+      where: {
+        ...(filter.villageId ? { villageId: filter.villageId } : {}),
+        ...(filter.status ? { status: filter.status as "PENDING" } : {}),
+        ...(filter.innovatorId ? { innovation: { is: { innovatorId: filter.innovatorId } } } : {}),
+      },
+      orderBy: { submittedAt: "desc" },
+      include: { innovation: true, village: true },
+    });
     return rows.map((c) => ({ id: c.id, innovationId: c.innovationId, innovationTitle: c.innovation.title, villageId: c.villageId, villageName: c.village.name, status: c.status, message: c.message, notes: c.notes ?? undefined, submittedAt: c.submittedAt.toISOString(), reviewedAt: c.reviewedAt?.toISOString() }));
   }
   let items = mem.claims.map(clone);
   if (filter.villageId) items = items.filter((c) => c.villageId === filter.villageId);
   if (filter.status) items = items.filter((c) => c.status === filter.status);
+  const innovatorId = filter.innovatorId;
+  if (innovatorId) items = items.filter((c) => mem.innovations.find((i) => i.id === c.innovationId)?.innovatorId === innovatorId);
   return items;
+}
+/** Batas otorisasi baca klaim: scope selalu dari sesi, bukan dari query client. */
+export async function listClaimsForUser(user: SessionUser, filter: { status?: string; villageId?: string } = {}) {
+  const scope = claimFilterFor(user);
+  if (scope.all) return listClaims({ status: filter.status, villageId: filter.villageId });
+  if (!scope.villageId && !scope.innovatorId) return [];
+  return listClaims({ status: filter.status, villageId: scope.villageId, innovatorId: scope.innovatorId });
 }
 export async function moderateClaim(user: SessionUser, id: string, action: "REVIEWING" | "APPROVED" | "REJECTED", notes?: string) {
   if (user.role !== "ADMIN") throw new Error("Hanya ADMIN yang dapat memoderasi pengajuan.");
