@@ -58,7 +58,7 @@ async function main() {
   for (const q of ASSESSMENT_QUESTIONS) {
     await prisma.assessmentQuestion.create({ data: { category: q.category, text: q.text, weight: q.weight, order: q.order } });
   }
-  console.log("Seed OK: 6 users, 3 innovators, 5 villages, 15 innovations, 5 claims, 7 questions.");
+  console.log("Seed OK: 7 users, 3 innovators, 5 villages, 15 innovations, 5 claims, 7 questions.");
 }
 
 main().finally(() => prisma.$disconnect());

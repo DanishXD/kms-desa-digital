@@ -33,6 +33,15 @@ function LoginInner() {
         <button type="button" onClick={() => signIn("google", { callbackUrl })} className="w-full rounded-xl border border-gray-300 py-2.5 text-sm font-semibold hover:bg-gray-50">Lanjutkan dengan Google</button>
       )}
       <p className="text-center text-sm text-gray-500">Belum punya akun? <Link href="/register" className="font-semibold text-brand-600 hover:underline">Daftar</Link></p>
+      <details className="mt-2 text-xs text-gray-500">
+        <summary className="cursor-pointer font-semibold">Akun demo</summary>
+        <ul className="mt-1 space-y-0.5 font-mono">
+          <li>admin@digidesa.id / admin123</li>
+          <li>inovator@tani.id / inovator123</li>
+          <li>desa@petir.id / desa123</li>
+          <li>kementerian@digidesa.id / kementerian123</li>
+        </ul>
+      </details>
     </form>
   );
 }

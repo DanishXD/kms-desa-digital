@@ -51,6 +51,39 @@ export default async function DashboardPage() {
     );
   }
 
+  // KEMENTERIAN: read-only aggregate + published innovations, no claims.
+  if (user.role === "KEMENTERIAN") {
+    const published = await listInnovations({ publishedOnly: true, perPage: 6 });
+    return (
+      <div className="space-y-6">
+        <div><h1 className="text-2xl font-extrabold text-brand-900">Dashboard Kementerian</h1><p className="text-sm text-gray-500">Halo, {user.name} 👋 — tampilan baca-saja.</p></div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Inovasi tayang" value={stats.published} href="/innovations" />
+          <Stat label="Total inovasi" value={stats.innovations} />
+          <Stat label="Total desa" value={stats.villages} />
+          <Stat label="Total inovator" value={stats.innovators} />
+        </div>
+        <section>
+          <SectionTitle title="Inovasi Terbaru" href="/innovations" linkLabel="Lihat katalog →" />
+          <ul className="space-y-2">
+            {published.items.map((i) => (
+              <li key={i.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 ring-1 ring-brand-100">
+                <div><p className="font-bold">{i.title}</p><p className="text-xs text-gray-500">{i.categoryName} · {i.innovatorName}</p></div>
+                <Link href={`/innovations/${i.slug}`} className="text-sm font-semibold text-brand-600 hover:underline">Lihat</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+        {notes.length > 0 && (
+          <section>
+            <SectionTitle title="Notifikasi" />
+            <ul className="space-y-2 text-sm">{notes.map((n) => <li key={n.id} className="rounded-xl bg-white p-3 ring-1 ring-brand-100"><b>{n.title}</b> - {n.body}</li>)}</ul>
+          </section>
+        )}
+      </div>
+    );
+  }
+
   // VILLAGE
   const claims = await listClaims({ villageId: user.villageId });
   const assessments = await listAssessments(user.villageId, 5);
