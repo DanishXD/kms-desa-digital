@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { isDbMode } from "@/server/store";
 import { IconSprout } from "./icons";
+import { NotificationBell } from "./notification-bell";
 
 export async function Navbar() {
   const session = await auth();
@@ -27,8 +28,9 @@ export async function Navbar() {
         <div className="flex shrink-0 items-center gap-1 text-sm sm:gap-2">
           {user ? (
             <>
+              {user.role !== "ADMIN" && <NotificationBell />}
               <Link href={user.role === "ADMIN" ? "/admin" : "/dashboard"} className="rounded-lg bg-brand-600 px-3 py-2 font-semibold text-white hover:bg-brand-700">
-                {user.role === "ADMIN" ? "Admin" : "Dashboard"}
+                {user.role === "ADMIN" ? "Admin" : user.role === "KEMENTERIAN" ? "Kementerian" : "Dashboard"}
               </Link>
               <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
                 <button className="rounded-lg px-3 py-2 text-gray-600 hover:bg-gray-100">Keluar</button>
@@ -72,11 +74,15 @@ export function Footer() {
           <ul className="mt-2 space-y-1 font-mono text-xs">
             <li>admin@digidesa.id / admin123</li>
             <li>inovator@tani.id / inovator123</li>
+            <li>inovator@desa.id / inovator123</li>
+            <li>inovator@irigasi.id / inovator123</li>
             <li>desa@petir.id / desa123</li>
+            <li>desa@sembalun.id / desa123</li>
+            <li>kementerian@digidesa.id / kementerian123</li>
           </ul>
         </div>
       </div>
-      <p className="border-t border-white/10 py-4 text-center text-xs">Functional clone untuk tujuan edukasi (PPKBP) — terinspirasi konsep digidesa.tech.</p>
+      <p className="border-t border-white/10 py-4 text-center text-xs">Functional clone untuk tujuan edukasi (PPKBP) - terinspirasi konsep digidesa.tech.</p>
     </footer>
   );
 }

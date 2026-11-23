@@ -7,7 +7,7 @@ import { claimFilterFor } from "@/lib/access";
 import { canTransitionClaim, canTransitionInnovation } from "@/lib/scoring";
 import { isObjectId, slugify } from "@/lib/utils";
 
-export interface SessionUser { id: string; email: string; name: string; role: "INNOVATOR" | "VILLAGE" | "ADMIN"; innovatorId?: string; villageId?: string; }
+export interface SessionUser { id: string; email: string; name: string; role: "INNOVATOR" | "VILLAGE" | "ADMIN" | "KEMENTERIAN"; innovatorId?: string; villageId?: string; }
 export interface InnovationFull {
   id: string; title: string; slug: string; shortDescription: string; description: string;
   categoryId: string; categoryName: string; categorySlug: string;
@@ -75,7 +75,7 @@ const mem: Mem = buildMemory();
 export const isDbMode = () => !!process.env.DATABASE_URL;
 
 // Prisma lazy (client di-generate via `prisma generate`; aman bila belum ada → fallback memori)
-async function prisma() {
+export async function prisma() {
   if (!isDbMode()) return null;
   try {
     const { PrismaClient } = await import("@prisma/client");
@@ -460,6 +460,14 @@ export async function userNotifications(userId: string) {
     return rows.map((n) => ({ id: n.id, type: n.type, title: n.title, body: n.body ?? undefined, read: n.read, createdAt: n.createdAt.toISOString() }));
   }
   return clone(mem.notifications.filter((n) => n.userId === userId).slice(0, 20));
+}
+export async function markNotificationsRead(userId: string) {
+  const p = await prisma();
+  if (p) {
+    await p.notification.updateMany({ where: { userId, read: false }, data: { read: true } }).catch(() => null);
+    return;
+  }
+  mem.notifications.forEach((n) => { if (n.userId === userId) n.read = true; });
 }
 export async function recentActivity(limit = 8) {
   return clone(mem.audit.slice(0, limit));
