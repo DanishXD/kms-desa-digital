@@ -38,7 +38,7 @@ Response:
   "scopeNote": "…",
   "disclaimer": "…",
   "role": "PUBLIC | INNOVATOR | VILLAGE | ADMIN | KEMENTERIAN",
-  "retrieval": { "mode": "lexical-tfidf", "threshold": 0.6, "topK": 3, "scanned": 28, "byCollection": {} }
+  "retrieval": { "mode": "lexical-tfidf", "threshold": 0.6, "topK": 3, "scanned": 30, "byCollection": {} }
 }
 ```
 `score` pada sumber hanya untuk audit internal — UI **tidak** menampilkannya sebagai confidence.
