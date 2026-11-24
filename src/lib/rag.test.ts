@@ -41,8 +41,17 @@ const nodes: KnowledgeNode[] = [
     collection: "documents",
     title: "Assessment kesiapan digital desa",
     text: "assessment kesiapan digital skor level LOW MEDIUM HIGH rekomendasi prioritas tujuh pertanyaan",
-    answer: "7 pertanyaan, skor 0–100, level LOW/MEDIUM/HIGH, dan rekomendasi prioritas.",
+    answer: "7 pertanyaan, skor 0-100, level LOW/MEDIUM/HIGH, dan rekomendasi prioritas.",
     href: "/assessment",
+    sensitivity: "public",
+  },
+  {
+    id: "doc_tentang_kms",
+    collection: "documents",
+    title: "Tentang KMS Desa Digital Indonesia",
+    text: "apa itu kms desa digital indonesia pengertian definisi katalog inovasi direktori desa inovator adopsi assessment",
+    answer: "KMS adalah sistem manajemen pengetahuan desa.",
+    href: "/",
     sensitivity: "public",
   },
 ];
@@ -91,6 +100,13 @@ describe("retrieve", () => {
     expect(r.status).toBe("found");
     expect(r.sources[0].collection).toBe("documents");
     expect(r.scopeNote).toContain("Fallback dokumen");
+  });
+
+  it("memilih dokumen definisi untuk pertanyaan meta, bukan entitas yang kebetulan cocok", () => {
+    const r = retrieve({ role: "PUBLIC" }, "Apa itu KMS Desa Digital?", nodes);
+    expect(r.status).toBe("found");
+    expect(r.sources[0].collection).toBe("documents");
+    expect(r.sources[0].title).toContain("KMS Desa Digital");
   });
 
   it("abstain untuk pertanyaan di luar domain", () => {

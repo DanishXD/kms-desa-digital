@@ -174,6 +174,8 @@ export function canAccess(principal: Principal, node: KnowledgeNode): boolean {
 const AGGREGATION = /(rata[\s-]?rata|total|jumlah|berapa banyak|peringkat|rank|terbaik|tertinggi|terendah|bandingkan|semua desa|seluruh desa|agregat|statistik|ranking)/i;
 const OUT_OF_DOMAIN = /(cuaca|prakiraan|prediksi harga|saham|medis|obat|resep|dokter|berita|olahraga|judol|perjudian|artificial general|jokes|lagu|film)/i;
 const CLARIFY = /^(apa|bagaimana|apa kabarnya|halo|hai|pagi|siang|sore|malam|desa|inovasi|data|help|tolong|bantuan|\?+)$/i;
+/** Pertanyaan tentang produk itu sendiri: jawabannya ada di dokumen pendukung, bukan entitas KMS. */
+const META = /(apa itu|pengertian|definisi|tentang kms|fitur kms|peran.*kms|kms desa digital|apakah kms|batasan chatbot|cara kerja chatbot|apa saja fitur)/i;
 
 function countByCollection(nodes: KnowledgeNode[]): Record<Collection, number> {
   const out: Record<Collection, number> = {
@@ -287,8 +289,13 @@ export function retrieve(
   const best = ranked[0]?.score ?? 0;
   const kms = ranked.filter((r) => r.node.collection !== "documents" && r.score >= options.threshold).slice(0, options.topK);
   const docs = ranked.filter((r) => r.node.collection === "documents" && r.score >= options.threshold).slice(0, options.topK);
-  const selected = kms.length > 0 ? kms : docs;
-  const usedDocuments = kms.length === 0 && docs.length > 0;
+  const kmsBest = kms[0]?.score ?? 0;
+  const docsBest = docs[0]?.score ?? 0;
+  // KMS tetap prioritas untuk kueri data, tetapi pertanyaan meta tentang produk
+  // dan dokumen yang jelas lebih relevan harus didahulukan agar tidak menjawab
+  // "Apa itu KMS?" dengan entitas inovasi yang kebetulan memuat kata "desa".
+  const usedDocuments = docs.length > 0 && (META.test(msg) || docsBest > kmsBest + 0.05) && docsBest >= options.threshold;
+  const selected = usedDocuments ? docs : kms.length > 0 ? kms : docs;
 
   if (selected.length === 0) {
     if (OUT_OF_DOMAIN.test(msg)) {
