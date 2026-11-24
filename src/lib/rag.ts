@@ -68,7 +68,7 @@ export interface RagResult {
   scopeNote?: string;
   role: ChatRole;
   retrieval: {
-    mode: "lexical-tfidf";
+    mode: "lexical-tfidf" | "deterministic-aggregate";
     threshold: number;
     topK: number;
     scanned: number;

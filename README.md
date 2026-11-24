@@ -14,6 +14,8 @@ Produksi: https://kms-desa-digital.vercel.app · Repo: https://github.com/Danish
 - **Chatbot RAG:** tanya-jawab bahasa alami — retrieval KMS (inovasi/desa/inovator/klaim) lebih dulu,
   dokumen pendukung sebagai fallback; role diambil dari sesi server (bukan body client), abstention di
   bawah threshold 0,6, sumber/tautan verifikasi, status keyakinan kualitatif, dan disclaimer Bab 10 laporan
+- **Agregasi/peringkat:** pertanyaan "berapa/ranking/terbanyak" dijawab deterministik di server (intent
+  allowlist, tanpa LLM/SQL bebas); ringkasan status klaim hanya ADMIN/KEMENTERIAN
 - **Auth:** email+password (bcrypt) + Google OAuth opsional (Auth.js v5), role
   `INNOVATOR/VILLAGE/ADMIN/KEMENTERIAN`
 - **Inovator:** dashboard, CRUD inovasi, submission tracker
@@ -27,7 +29,7 @@ Produksi: https://kms-desa-digital.vercel.app · Repo: https://github.com/Danish
 ## Tech stack
 
 Next.js 16.4.6 (App Router) · TypeScript · Tailwind v4 · Prisma 6 (MongoDB) · Auth.js v5 ·
-Zod · bcryptjs · Recharts · Vitest. Unit test 44 lulus + smoke test produksi.
+Zod · bcryptjs · Recharts · Vitest. Unit test 50 lulus + smoke test produksi.
 
 > **Catatan integritas:** retrieval chatbot ini leksikal deterministik (TF-IDF ringan) dan berjalan
 > di dalam aplikasi. Ini **bukan** embedding `mxbai-embed-large`/Ollama dan **bukan** generator
@@ -48,7 +50,7 @@ Reset data: `npm run db:reset`.
 ## Test & quality
 
 ```bash
-npm test        # vitest (44 unit test)
+npm test        # vitest (50 unit test)
 npm run lint    # eslint src prisma
 npx tsc --noEmit
 npm run build

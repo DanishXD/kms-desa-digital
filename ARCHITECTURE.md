@@ -27,7 +27,7 @@ src/
 ├── server/rag-source.ts    # korpus RAG: 4 koleksi KMS + dokumen pendukung website
 ├── lib/                    # scoring.ts, validation.ts (Zod), utils.ts,
 │                           # access.ts (claimFilterFor, canListAllInnovations),
-│                           # rate-limit.ts, site.ts, rag.ts, unit tests
+│                           # rate-limit.ts, site.ts, aggregation.ts, rag.ts, unit tests
 ├── data/seed-data.ts       # dataset fiktif ID (dipakai seed + mode demo)
 ├── auth.ts                 # Auth.js v5: Credentials (rate limit) + Google opsional, JWT
 └── middleware              # tidak dipakai — guard via auth() di layout/page/API
@@ -46,5 +46,7 @@ src/
 - **Akses data**: `claimFilterFor` + `listClaimsForUser` memastikan klaim hanya terbaca sesuai role.
 - **Rate limit**: in-memory fixed window (best-effort di serverless).
 - **Vitest** dibatasi ke `src/**/*.test.ts` via `vitest.config.mjs`.
+- **Agregasi/ranking deterministik**: `lib/aggregation.ts` hanya menjawab intent yang di-allowlist;
+  status klaim dibatasi ADMIN/KEMENTERIAN. Tidak ada text-to-SQL bebas.
 - **SEO**: `siteUrl()` resolve origin dari env/Vercel/localhost.
 - **Deploy**: Vercel + MongoDB Atlas, cron health harian, smoke test.

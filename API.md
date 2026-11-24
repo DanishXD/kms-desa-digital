@@ -44,3 +44,8 @@ Response:
 `score` pada sumber hanya untuk audit internal — UI **tidak** menampilkannya sebagai confidence.
 Retrieval memakai 4 koleksi KMS sebagai prioritas dan dokumen pendukung website sebagai fallback.
 Implementasi leksikal, bukan embedding/generator naskah.
+
+Pertanyaan agregasi ("berapa inovasi", "ranking kategori", "adopsi terbanyak", "jumlah desa/inovator")
+dijawab lewat `retrieval.mode = "deterministic-aggregate"` — dihitung di server dari data katalog,
+tanpa LLM/SQL bebas. Ringkasan status klaim hanya untuk `ADMIN`/`KEMENTERIAN`; role lain mendapat
+`status: "needs_permission"`.

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { aggregateAnswer } from "@/lib/aggregation";
 import { buildKnowledgeNodes } from "@/server/rag-source";
+import { listClaims, listInnovations, listInnovators, listVillages } from "@/server/store";
 import {
   CHAT_DISCLAIMER,
   retrieve,
@@ -81,6 +83,25 @@ export async function POST(req: Request) {
     }
 
     const nodes = await buildKnowledgeNodes();
+    // Agregasi/peringkat dijawab dari hitungan deterministik di server,
+    // BUKAN dari LLM. Data diambil dengan batas 200 (seluruh katalog demo).
+    const [ innov, villages, innovators, claims ] = await Promise.all([
+      listInnovations({ publishedOnly: false, perPage: 200 }),
+      listVillages(),
+      listInnovators(),
+      listClaims(),
+    ]);
+    const aggregate = aggregateAnswer(
+      effective,
+      {
+        innovations: innov.items.map((i) => ({ title: i.title, slug: i.slug, categoryName: i.categoryName, status: i.status, claimCount: i.claimCount })),
+        villages: villages.map((v) => ({ name: v.name })),
+        innovators: innovators.map((n) => ({ name: n.name })),
+        claims: claims.map((c) => ({ status: c.status, villageName: c.villageName, innovationTitle: c.innovationTitle })),
+      },
+      role,
+    );
+    if (aggregate) return NextResponse.json(toJson(aggregate));
     const sessionUser = (session?.user ?? {}) as Record<string, unknown>;
     const villageId = sessionUser.villageId as string | undefined;
     const innovatorId = sessionUser.innovatorId as string | undefined;
