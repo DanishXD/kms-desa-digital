@@ -20,8 +20,11 @@ export function AssessmentWizard({ questions, canSave }: { questions: Q[]; canSa
       <p className="text-xs text-gray-500">{canSave ? "Hasil akan tersimpan ke riwayat desa." : "Masuk sebagai akun desa untuk menyimpan riwayat."}</p>
       {questions.map((q, i) => (
         <fieldset key={q.id} className="rounded-2xl bg-white p-4 ring-1 ring-brand-100">
-          <legend className="px-1 text-sm font-bold">{i + 1}. {q.text} <span className="ml-1 rounded bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{q.category}</span></legend>
-          <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label={q.text}>
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-bold text-brand-900">{i + 1}. {q.text}</span>
+            <span className="rounded bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{q.category}</span>
+          </div>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={q.text}>
             {LABELS.map((label, v) => (
               <button key={v} type="button" role="radio" aria-checked={answers[q.id] === v}
                 onClick={() => setAnswers((a) => ({ ...a, [q.id]: v }))}
