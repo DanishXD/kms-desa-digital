@@ -10,6 +10,7 @@ export function AssessmentWizard({ questions, canSave }: { questions: Q[]; canSa
   const [villageName, setVillageName] = useState("");
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<{ totalScore: number; level: string; interpretation: string; recommendations: { category: string; advice: string }[]; saved?: boolean; assessmentId?: string } | null>(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const done = questions.length > 0 && questions.every((q) => answers[q.id] !== undefined);
 
@@ -34,14 +35,31 @@ export function AssessmentWizard({ questions, canSave }: { questions: Q[]; canSa
       <button disabled={!done || loading} className={btnPrimary + " w-full md:w-auto"}
         onClick={async () => {
           setLoading(true);
-          const r = await fetch("/api/assessment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ villageName, answers: questions.map((q) => ({ questionId: q.id, value: answers[q.id] })) }) });
-          setResult(await r.json());
-          setLoading(false);
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          setError("");
+          try {
+            const r = await fetch("/api/assessment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ villageName, answers: questions.map((q) => ({ questionId: q.id, value: answers[q.id] })) }) });
+            const data = await r.json();
+            if (!r.ok || typeof data.totalScore !== "number" || !Array.isArray(data.recommendations)) {
+              setError(data.error ?? "Gagal menghitung assessment. Silakan coba lagi.");
+            } else {
+              setResult(data);
+            }
+          } catch {
+            setError("Koneksi terputus. Periksa internet lalu coba lagi.");
+          } finally {
+            setLoading(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
         }}>
         {loading ? "Menghitung…" : "Lihat Hasil Assessment"}
       </button>
       {!done && <p className="text-xs text-gray-500">{Object.keys(answers).length}/{questions.length} pertanyaan terjawab.</p>}
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold">Assessment belum selesai.</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
       {result && (
         <div className="rounded-3xl bg-brand-900 p-6 text-white">
           <p className="text-sm text-brand-100">Skor kesiapan digital</p>
@@ -49,7 +67,7 @@ export function AssessmentWizard({ questions, canSave }: { questions: Q[]; canSa
           <p className="mt-2"><Badge status={result.level === "HIGH" ? "APPROVED" : result.level === "MEDIUM" ? "PENDING" : "REJECTED"} /> <span className="font-bold">{result.level}</span></p>
           <p className="mt-2 text-sm text-brand-100">{result.interpretation}</p>
           <p className="mt-2 text-xs text-brand-100">{result.saved ? "Tersimpan ke riwayat desa" : "Masuk sebagai akun desa untuk menyimpan riwayat."}</p>
-          {result.recommendations.length > 0 && (
+          {(result.recommendations ?? []).length > 0 && (
             <ul className="mt-3 space-y-2 text-sm">
               {result.recommendations.map((r) => <li key={r.category} className="rounded-xl bg-white/10 p-3"><b>{r.category}:</b> {r.advice}</li>)}
             </ul>
